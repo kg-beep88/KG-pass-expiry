@@ -1,0 +1,39 @@
+KG PASS & LICENSE TRACKER - DONKEY SIMPLE SETUP
+
+VIEW PIN: 1234
+EDIT PIN: hengonghuat
+
+[ ] 1. Create Google Sheet.
+[ ] 2. Click Extensions > Apps Script.
+[ ] 3. Copy apps-script/Code.gs into Apps Script.
+[ ] 4. Save.
+[ ] 5. Run initialSetup.
+[ ] 6. Approve permission.
+[ ] 7. Deploy > New deployment > Web app.
+[ ] 8. Set Execute as Me.
+[ ] 9. Set Who has access Anyone.
+[ ] 10. Copy URL ending /exec.
+[ ] 11. Paste /exec URL into config.js.
+[ ] 12. Upload website files to GitHub.
+[ ] 13. Turn on GitHub Pages.
+[ ] 14. Open website and test Edit PIN.
+[ ] 15. Add worker/foreman and pass/license.
+[ ] 16. Run sendTestEmail in Apps Script.
+
+PIN meaning:
+VIEW PIN = see only, cannot change.
+EDIT PIN = can add, edit, delete.
+
+EMAIL ALERT TO:
+shayne@kgplasterceil.com.sg
+kgchesterlee@gmail.com
+
+PASS RULE:
+Red = expired or within 15 days.
+Yellow = 16 to 30 days.
+Normal = more than 30 days.
+
+LICENSE RULE:
+Red = expired or within 35 days.
+Yellow = 36 to 60 days.
+Normal = more than 60 days.

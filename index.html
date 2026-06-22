@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14324d">
+  <meta name="description" content="KG Pass and License Expiry Tracker with view/edit PIN tiers and email alerts.">
+  <title>KG Pass & License Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">KG PLASTERCEIL</p>
+      <h1>Pass & License Tracker</h1>
+      <p class="subtitle">2 PIN system: View only or Edit access · Expiry soon always shown on top</p>
+    </div>
+    <div class="topbar-actions">
+      <button id="refreshButton" class="button button-secondary" type="button">Refresh</button>
+      <button id="addPersonButton" class="button button-primary" type="button">+ Add person</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section id="setupNotice" class="notice notice-warning hidden" aria-live="polite">
+      <strong>Setup needed.</strong> Open <code>config.js</code> and paste your Google Apps Script <code>/exec</code> URL.
+    </section>
+
+    <section id="connectionNotice" class="notice notice-error hidden" aria-live="assertive"></section>
+
+    <section id="unlockPanel" class="unlock-card" aria-labelledby="unlockTitle">
+      <div>
+        <p class="eyebrow">PRIVATE COMPANY LIST</p>
+        <h2 id="unlockTitle">Enter PIN</h2>
+        <p><strong>View PIN</strong> can only see the list. <strong>Edit PIN</strong> can add, change and delete records.</p>
+        <p class="small-text">The PIN is checked inside Google Apps Script, not inside this public website file.</p>
+      </div>
+      <form id="unlockForm" class="unlock-form">
+        <label>
+          <span>PIN</span>
+          <input id="pinInput" name="pin" type="password" inputmode="text" autocomplete="current-password" required>
+        </label>
+        <label class="checkbox-row">
+          <input id="rememberPin" type="checkbox">
+          <span>Remember PIN on this device</span>
+        </label>
+        <button class="button button-primary" type="submit">Open tracker</button>
+      </form>
+    </section>
+
+    <div id="appContent" class="hidden">
+      <section class="access-row">
+        <div>
+          <span id="accessBadge" class="access-badge">View only</span>
+          <span id="lastUpdated" class="muted-text"></span>
+        </div>
+        <button id="logoutButton" class="text-button" type="button">Change PIN / logout</button>
+      </section>
+
+      <section class="summary-grid" aria-label="Summary">
+        <article class="summary-card">
+          <span>People</span>
+          <strong id="personCount">0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Total pass/license</span>
+          <strong id="itemCount">0</strong>
+        </article>
+        <article class="summary-card summary-red">
+          <span>Red urgent</span>
+          <strong id="redCount">0</strong>
+        </article>
+        <article class="summary-card summary-yellow">
+          <span>Yellow soon</span>
+          <strong id="yellowCount">0</strong>
+        </article>
+      </section>
+
+      <section class="rule-grid">
+        <article class="rule-card red-rule">
+          <h3>Pass rule</h3>
+          <p><strong>Red:</strong> expired / within 15 days</p>
+          <p><strong>Yellow:</strong> 16–30 days</p>
+        </article>
+        <article class="rule-card yellow-rule">
+          <h3>License rule</h3>
+          <p><strong>Red:</strong> expired / within 35 days</p>
+          <p><strong>Yellow:</strong> 36–60 days</p>
+        </article>
+      </section>
+
+      <section class="records-section">
+        <div class="section-heading records-heading">
+          <div>
+            <p class="eyebrow">SEARCH & FILTER</p>
+            <h2>Expiry list</h2>
+          </div>
+          <div class="filters">
+            <label class="search-field">
+              <span class="sr-only">Search</span>
+              <input id="searchInput" type="search" placeholder="Type name, nickname, MBS, BCSS, work permit...">
+            </label>
+            <label>
+              <span class="sr-only">Filter role</span>
+              <select id="roleFilter">
+                <option value="all">All roles</option>
+                <option value="foreman">Foreman</option>
+                <option value="worker">Worker</option>
+              </select>
+            </label>
+            <label>
+              <span class="sr-only">Filter type</span>
+              <select id="typeFilter">
+                <option value="all">Pass + License</option>
+                <option value="Pass">Site pass only</option>
+                <option value="License">License only</option>
+              </select>
+            </label>
+            <label>
+              <span class="sr-only">Filter status</span>
+              <select id="statusFilter">
+                <option value="all">All status</option>
+                <option value="red">Red only</option>
+                <option value="yellow">Yellow only</option>
+                <option value="normal">Normal only</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div id="expiryCards" class="expiry-cards"></div>
+        <div id="emptyState" class="empty-state hidden">
+          <strong>No matching records.</strong>
+          <span>Try another search word, or add a person using the edit PIN.</span>
+        </div>
+      </section>
+
+      <section class="people-section">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">PERSON LIST</p>
+            <h2>People</h2>
+          </div>
+        </div>
+        <div id="peopleList" class="people-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="personDialog" class="modal">
+    <form id="personForm" class="modal-card" method="dialog">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">ADD / EDIT</p>
+          <h2 id="dialogTitle">Person detail</h2>
+        </div>
+        <button id="closeDialogButton" class="icon-button" type="button" aria-label="Close">×</button>
+      </div>
+
+      <input id="personIdInput" type="hidden">
+
+      <div class="form-grid two-col">
+        <label>
+          <span>Name</span>
+          <input id="nameInput" type="text" required placeholder="Full name">
+        </label>
+        <label>
+          <span>Nickname</span>
+          <input id="nicknameInput" type="text" placeholder="Short name">
+        </label>
+        <label>
+          <span>Role</span>
+          <select id="roleInput" required>
+            <option value="Worker">Worker</option>
+            <option value="Foreman">Foreman</option>
+          </select>
+        </label>
+        <label>
+          <span>Notes</span>
+          <input id="personNotesInput" type="text" placeholder="Optional">
+        </label>
+      </div>
+
+      <div class="item-header-row">
+        <div>
+          <p class="eyebrow">PASS / LICENSE</p>
+          <h3>Expiry items</h3>
+        </div>
+        <div class="item-add-actions">
+          <button id="addPassButton" class="small-button" type="button">+ Site pass</button>
+          <button id="addLicenseButton" class="small-button" type="button">+ License</button>
+        </div>
+      </div>
+
+      <div id="itemEditorList" class="item-editor-list"></div>
+
+      <datalist id="commonItems">
+        <option value="MBS"></option>
+        <option value="VSMC"></option>
+        <option value="Work Permit"></option>
+        <option value="BCSS"></option>
+        <option value="CSOC"></option>
+        <option value="Driving License"></option>
+        <option value="Forklift License"></option>
+        <option value="Boom Lift"></option>
+        <option value="Scissor Lift"></option>
+        <option value="MEWP"></option>
+      </datalist>
+
+      <div class="modal-actions">
+        <button id="deletePersonButton" class="button button-danger" type="button">Delete person</button>
+        <button class="button button-secondary" type="button" id="cancelDialogButton">Cancel</button>
+        <button id="savePersonButton" class="button button-primary" type="submit">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
