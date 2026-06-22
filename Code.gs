@@ -41,18 +41,27 @@ const ITEM_HEADERS = [
 const LOG_HEADERS = ['timestamp', 'action', 'mode', 'detail'];
 
 function doGet(e) {
-  const action = String((e.parameter && e.parameter.action) || '').trim();
+  const params = (e && e.parameter) || {};
+  const action = String(params.action || '').trim();
   if (!action) {
     return ContentService
       .createTextOutput('KG Pass & License Tracker backend is running. Use the website to connect.')
       .setMimeType(ContentService.MimeType.TEXT);
   }
 
-  // Optional JSONP support for testing.
-  const result = handleRequest_(e.parameter || {});
-  const callback = String((e.parameter && e.parameter.callback) || 'callback').replace(/[^A-Za-z0-9_.$]/g, '');
+  let result;
+  try {
+    result = handleRequest_(params);
+  } catch (err) {
+    result = { ok: false, error: cleanError_(err) };
+  }
+
+  result.requestId = String(params.requestId || '');
+  result.kgPassTracker = true;
+
+  const callback = sanitizeCallback_(params.callback || 'callback');
   return ContentService
-    .createTextOutput(callback + '(' + JSON.stringify(result) + ');')
+    .createTextOutput(callback + '(' + JSON.stringify(result).replace(/</g, '\u003c') + ');')
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
@@ -578,6 +587,12 @@ function htmlPostMessage_(result) {
   return HtmlService
     .createHtmlOutput(html)
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function sanitizeCallback_(value) {
+  const callback = String(value || 'callback');
+  if (/^[A-Za-z_$][0-9A-Za-z_$.]{0,100}$/.test(callback)) return callback;
+  return 'callback';
 }
 
 function cleanError_(err) {

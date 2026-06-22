@@ -168,63 +168,51 @@
     if (!isConfigured()) return Promise.reject(new Error("Missing Apps Script URL in config.js"));
 
     const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const url = window.KG_PASS_CONFIG.SCRIPT_URL;
+    const callbackName = `kgPassCallback_${requestId.replace(/[^A-Za-z0-9_]/g, "_")}`;
+    const baseUrl = window.KG_PASS_CONFIG.SCRIPT_URL;
+
+    const params = new URLSearchParams({
+      action,
+      requestId,
+      pin: state.pin,
+      payload: JSON.stringify(payload || {}),
+      callback: callbackName,
+      _: String(Date.now())
+    });
 
     return new Promise((resolve, reject) => {
+      let script;
+      let done = false;
+
+      function cleanup() {
+        if (done) return;
+        done = true;
+        window.clearTimeout(timer);
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+        try { delete window[callbackName]; } catch (err) { window[callbackName] = undefined; }
+      }
+
       const timer = window.setTimeout(() => {
-        state.pending.delete(requestId);
-        reject(new Error("Apps Script no reply. Check deployment: Execute as Me, Who has access Anyone, URL must end with /exec."));
+        cleanup();
+        reject(new Error("Apps Script no reply. Check deployment: Execute as Me, Who has access Anyone, URL must end with /exec. Also deploy a NEW VERSION after changing Code.gs."));
       }, 30000);
 
-      state.pending.set(requestId, { resolve, reject, timer });
-
-      const iframe = document.createElement("iframe");
-      iframe.name = `kg_api_${requestId}`;
-      iframe.className = "hidden";
-      iframe.setAttribute("aria-hidden", "true");
-
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = url;
-      form.target = iframe.name;
-      form.className = "hidden";
-
-      const fields = {
-        action,
-        requestId,
-        pin: state.pin,
-        payload: JSON.stringify(payload || {})
+      window[callbackName] = (data) => {
+        cleanup();
+        if (data && data.ok) resolve(data);
+        else reject(new Error((data && data.error) || "Unknown backend error"));
       };
 
-      Object.entries(fields).forEach(([name, value]) => {
-        const input = document.createElement("input");
-        input.type = "hidden";
-        input.name = name;
-        input.value = value;
-        form.appendChild(input);
-      });
-
-      document.body.appendChild(iframe);
-      document.body.appendChild(form);
-      form.submit();
-
-      window.setTimeout(() => {
-        form.remove();
-        iframe.remove();
-      }, 35000);
+      script = document.createElement("script");
+      script.src = `${baseUrl}?${params.toString()}`;
+      script.async = true;
+      script.onerror = () => {
+        cleanup();
+        reject(new Error("Could not load Apps Script. Check the /exec URL and deployment access setting."));
+      };
+      document.head.appendChild(script);
     });
   }
-
-  window.addEventListener("message", (event) => {
-    const data = event.data;
-    if (!data || data.kgPassTracker !== true || !data.requestId) return;
-    const pending = state.pending.get(data.requestId);
-    if (!pending) return;
-    window.clearTimeout(pending.timer);
-    state.pending.delete(data.requestId);
-    if (data.ok) pending.resolve(data);
-    else pending.reject(new Error(data.error || "Unknown backend error"));
-  });
 
   async function loadData(button) {
     clearConnectionError();

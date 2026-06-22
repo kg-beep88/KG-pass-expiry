@@ -182,3 +182,15 @@ The backend creates 3 tabs:
 - `Log` = record of setup/save/delete/email actions.
 
 You can manually edit the Google Sheet if needed, but use the website when possible because it keeps the ID links correct.
+
+
+## Fix note for “stuck on Opening...”
+
+This fixed version uses JSONP script loading instead of the old hidden iframe/postMessage method.
+If you updated from the previous version, do these 3 things:
+
+1. Replace `app.js` on GitHub with this new `app.js`.
+2. Replace Google Apps Script `Code.gs` with this new `apps-script/Code.gs`.
+3. In Apps Script, click **Deploy > Manage deployments > Edit > New version > Deploy**.
+
+After upload, hard-refresh the website. On phone, close Safari/Chrome and open again.
